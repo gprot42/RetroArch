@@ -150,7 +150,9 @@ CFLAGS := $(ARCHFLAGS)
 CXXFLAGS := $(ARCHFLAGS) -fno-exceptions -fno-rtti -std=c++11 -D__STDC_CONSTANT_MACROS
 ASFLAGS := $(ARCHFLAGS)
 LDFLAGS := -Wl,-rpath=\$$ORIGIN/lib,--gc-sections
-INCLUDE_DIRS = -I$(WEBOS_INC_DIR)
+# Leave empty so Makefile.common can prepend paths like compat/zlib
+# ahead of the sysroot include dir (required for HAVE_BUILTINZLIB).
+INCLUDE_DIRS =
 LIBRARY_DIRS = -L$(WEBOS_USR_LIB_DIR)
 DEFINES := -DRARCH_INTERNAL -D_FILE_OFFSET_BITS=64 -UHAVE_STATIC_DUMMY
 DEFINES += -DHAVE_C99=1 -DHAVE_CXX=1 -D_GNU_SOURCE
@@ -201,6 +203,8 @@ endif
 
 include Makefile.common
 
+# Sysroot includes last so bundled headers (e.g. compat/zlib) take precedence
+INCLUDE_DIRS += -I$(WEBOS_INC_DIR)
 DEF_FLAGS += $(INCLUDE_DIRS)
 LDFLAGS += $(CFLAGS) $(CXXFLAGS) $(DEF_FLAGS)
 CFLAGS += $(DEF_FLAGS)
@@ -304,11 +308,11 @@ ipk: $(TARGET) sdl2
 	rm -rf webos/dist
 	mkdir -p webos/dist/lib
 	echo "$$APPINFO" > webos/dist/appinfo.json
-	cp -t webos/dist -vf $(TARGET) webos/icon160.png
-	cp -t webos/dist/lib -vf $(WEBOS_USR_LIB_DIR)/libstdc++.so.6
-	cp -t webos/dist/lib -vf $(WEBOS_LIB_DIR)/libatomic.so.1
+	cp -vf $(TARGET) webos/icon160.png webos/dist/
+	cp -vf $(WEBOS_USR_LIB_DIR)/libstdc++.so.6 webos/dist/lib/
+	cp -vf $(WEBOS_LIB_DIR)/libatomic.so.1 webos/dist/lib/
 ifeq ($(ADD_SDL2_LIB), 1)
-	cp -t webos/dist/lib -vf SDL/lib/libSDL2-2.0.so.0
+	cp -vf SDL/lib/libSDL2-2.0.so.0 webos/dist/lib/
 endif
 ifneq ($(DEBUG), 1)
 	$(STRIP) webos/dist/$(TARGET)
