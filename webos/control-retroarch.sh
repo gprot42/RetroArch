@@ -323,6 +323,9 @@ _core_label() {
     swanstation*) echo "PlayStation 1 (SwanStation)" ;;
     gpsp*)     echo "Game Boy Advance (gpSP)" ;;
     gambatte*) echo "Game Boy / Color (gambatte)" ;;
+    fbneo*)    echo "Neo Geo / Arcade (FinalBurn Neo)" ;;
+    fbalpha2012_neogeo*) echo "Neo Geo (FB Alpha 2012)" ;;
+    geolith*)  echo "Neo Geo (Geolith)" ;;
     *)         echo "${b%_libretro.so}" ;;
   esac
 }
@@ -357,6 +360,9 @@ ls -1 "\$CORES"/*_libretro.so 2>/dev/null | sort | while IFS= read -r p; do
     swanstation*) label="PlayStation 1 (SwanStation)" ;;
     gpsp*)     label="Game Boy Advance (gpSP)" ;;
     gambatte*) label="Game Boy / Color (gambatte)" ;;
+    fbneo*)    label="Neo Geo / Arcade (FinalBurn Neo)" ;;
+    fbalpha2012_neogeo*) label="Neo Geo (FB Alpha 2012)" ;;
+    geolith*)  label="Neo Geo (Geolith)" ;;
     *)         label="\$b" ;;
   esac
   sz=\$(ls -lh "\$p" | awk '{print \$5}')
@@ -406,6 +412,9 @@ printf '%s\n' "\$list" | while IFS= read -r p; do
     swanstation*) label="PlayStation 1 (SwanStation)" ;;
     gpsp*)     label="Game Boy Advance (gpSP)" ;;
     gambatte*) label="Game Boy / Color (gambatte)" ;;
+    fbneo*)    label="Neo Geo / Arcade (FinalBurn Neo)" ;;
+    fbalpha2012_neogeo*) label="Neo Geo (FB Alpha 2012)" ;;
+    geolith*)  label="Neo Geo (Geolith)" ;;
     *)         label="\${b%_libretro.so}" ;;
   esac
   # Strip | from labels so machine format stays 4 fields
@@ -466,6 +475,9 @@ cmd_cores_available() {
       else if (file ~ /^swanstation/) label = "PlayStation 1 (SwanStation)"
       else if (file ~ /^gpsp/) label = "Game Boy Advance (gpSP)"
       else if (file ~ /^gambatte/) label = "Game Boy / Color (gambatte)"
+      else if (file ~ /^fbneo/) label = "Neo Geo / Arcade (FinalBurn Neo)"
+      else if (file ~ /^fbalpha2012_neogeo/) label = "Neo Geo (FB Alpha 2012)"
+      else if (file ~ /^geolith/) label = "Neo Geo (Geolith)"
       else label = name
       if (filt != "") {
         low = tolower(file " " label)
@@ -548,7 +560,7 @@ EOS
 }
 
 # Machine lines: one basename per line (for GUI "already installed" checks)
-# Arg: system id (amiga|snes|nes|genesis|gba|gbc|n64|psx)
+# Arg: system id (amiga|snes|nes|genesis|gba|gbc|n64|psx|neogeo)
 cmd_list_installed() {
   local sys
   sys="$(printf '%s' "${1:-amiga}" | tr '[:upper:]' '[:lower:]')"
@@ -562,6 +574,7 @@ cmd_list_installed() {
     gbc|gb) dir="${RA_DIR}/disks/gb" ;;
     n64) dir="${RA_DIR}/disks/n64" ;;
     psx|ps1) dir="${RA_DIR}/disks/psx" ;;
+    neogeo|neo-geo|neo_geo|ng) dir="${RA_DIR}/disks/neogeo" ;;
     *) dir="${RA_DIR}/disks/${sys}" ;;
   esac
   echo "# installed system=${sys} dir=${dir}"
@@ -622,7 +635,7 @@ cmd_adfs_machine() {
 
 # All games/demos/media under disks/* for the GUI.
 # Machine: system|idx|name|path
-# system = amiga|snes|nes|genesis|gba|gb|n64|psx|…
+# system = amiga|snes|nes|genesis|gba|gb|n64|psx|neogeo|…
 # Uses ssh_quick; always exit 0.
 cmd_media_machine() {
   set +e
@@ -640,6 +653,7 @@ is_media() {
     *.md|*.gen|*.smd|*.32x|*.sms|*.gg|\\
     *.gba|*.gb|*.gbc|*.sgb|\\
     *.n64|*.z64|*.v64|\\
+    *.neo|\\
     *.pbp|*.img|*.mdf|*.toc|*.m3u|*.zip|*.7z|*.rar|*.bin|*.rom)
       return 0 ;;
     *) return 1 ;;
@@ -660,13 +674,13 @@ emit_dir() {
     printf '%s|%d|%s|%s\\n' "\$sys" "\$i" "\$b" "\$p"
   done
 }
-for sys in amiga snes nes genesis gba gb gbc n64 psx; do
+for sys in amiga snes nes genesis gba gb gbc n64 psx neogeo; do
   emit_dir "\$sys" "\$DISKS/\$sys"
 done
 find "\$DISKS" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort | while IFS= read -r d; do
   sys=\$(basename "\$d")
   case "\$sys" in
-    amiga|snes|nes|genesis|gba|gb|gbc|n64|psx) continue ;;
+    amiga|snes|nes|genesis|gba|gb|gbc|n64|psx|neogeo) continue ;;
   esac
   emit_dir "\$sys" "\$d"
 done
@@ -1947,6 +1961,10 @@ _resolve_core_for_system() {
     psx|ps1)
       list="pcsx_rearmed_libretro.so swanstation_libretro.so mednafen_psx_libretro.so"
       ;;
+    neogeo|neo-geo|neo_geo|ng)
+      # FinalBurn Neo is the main MVS/AES set core; Geolith for .neo cart dumps.
+      list="fbneo_libretro.so geolith_libretro.so fbalpha2012_neogeo_libretro.so"
+      ;;
     *)
       die "unknown system for play: $sys"
       ;;
@@ -1979,6 +1997,7 @@ _resolve_media_pick() {
     gb|gbc) dir="${RA_DIR}/disks/${sys}" ;;
     n64) dir="${RA_DIR}/disks/n64" ;;
     psx|ps1) dir="${RA_DIR}/disks/psx"; sys=psx ;;
+    neogeo|neo-geo|neo_geo|ng) dir="${RA_DIR}/disks/neogeo"; sys=neogeo ;;
     *) dir="${RA_DIR}/disks/${sys}" ;;
   esac
   PICK_SYS="$sys"
@@ -2237,6 +2256,7 @@ cmd_remove_media() {
     gb|gbc) expect_dir="${RA_DIR}/disks/${sys}" ;;
     n64) expect_dir="${RA_DIR}/disks/n64" ;;
     psx|ps1) expect_dir="${RA_DIR}/disks/psx"; sys=psx ;;
+    neogeo|neo-geo|neo_geo|ng) expect_dir="${RA_DIR}/disks/neogeo"; sys=neogeo ;;
     *) expect_dir="${RA_DIR}/disks/${sys}" ;;
   esac
 
